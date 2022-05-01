@@ -595,6 +595,16 @@ void loadServerConfigFromString(char *config) {
                 err = sentinelHandleConfiguration(argv+1,argc-1);
                 if (err) goto loaderr;
             }
+        } else if (!strcasecmp(argv[0],"lua-module-dir")) {
+            zfree(server.lua_module_dir);
+            {
+                size_t length = sdslen(argv[1]);
+                if (length > 0  &&  (argv[1][length-1] == '/')) {
+                    argv[1] = sdsnewlen(argv[1], length -1);
+                }
+            }
+            server.lua_module_dir = getAbsolutePath(argv[1]);
+
         } else {
             err = "Bad directive or wrong number of arguments"; goto loaderr;
         }
@@ -2318,6 +2328,7 @@ standardConfig configs[] = {
     createStringConfig("aof_rewrite_cpulist", NULL, IMMUTABLE_CONFIG, EMPTY_STRING_IS_NULL, server.aof_rewrite_cpulist, NULL, NULL, NULL),
     createStringConfig("bgsave_cpulist", NULL, IMMUTABLE_CONFIG, EMPTY_STRING_IS_NULL, server.bgsave_cpulist, NULL, NULL, NULL),
     createStringConfig("ignore-warnings", NULL, MODIFIABLE_CONFIG, ALLOW_EMPTY_STRING, server.ignore_warnings, "ARM64-COW-BUG", NULL, NULL),
+    createStringConfig("lua-module-dir", NULL, IMMUTABLE_CONFIG, EMPTY_STRING_IS_NULL, server.lua_module_dir, NULL, NULL, NULL),
 
     /* Enum Configs */
     createEnumConfig("supervised", NULL, IMMUTABLE_CONFIG, supervised_mode_enum, server.supervised_mode, SUPERVISED_NONE, NULL, NULL),

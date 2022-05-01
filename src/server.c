@@ -4181,6 +4181,7 @@ sds genRedisInfoString(const char *section) {
             "lru_clock:%u\r\n"
             "executable:%s\r\n"
             "config_file:%s\r\n"
+            "lua_script_dir:%s\r\n"
             "io_threads_active:%i\r\n",
             REDIS_VERSION,
             redisGitSHA1(),
@@ -4206,6 +4207,7 @@ sds genRedisInfoString(const char *section) {
             server.lruclock,
             server.executable ? server.executable : "",
             server.configfile ? server.configfile : "",
+            server.lua_module_dir ? server.lua_module_dir : "",
             server.io_threads_active);
     }
 

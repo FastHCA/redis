@@ -1107,6 +1107,97 @@ void scriptingEnableGlobalsProtection(lua_State *lua) {
     sdsfree(code);
 }
 
+
+void loadLuaModuleFromConfig(lua_State *lua, const char *scriptpath, char *config) {
+    char *err       = NULL;
+    char *errfile   = NULL;
+    char *errdetail = NULL;
+
+    int linenum = 0, totlines, i;
+    sds *lines;
+
+    lines = sdssplitlen(config, strlen(config), "\n", 1, &totlines);
+    for (i = 0; i < totlines; i++) {
+        sds *argv;
+        int argc;
+
+        linenum = i+1;
+        lines[i] = sdstrim(lines[i]," \t\r\n");
+
+        /* Skip comments and blank lines */
+        if (lines[i][0] == '#' || lines[i][0] == '\0') continue;
+
+        /* Split into arguments */
+        argv = sdssplitargs(lines[i], &argc);
+        if (argv == NULL) {
+            err = "Unbalanced quotes in configuration line";
+            goto loaderr;
+        }
+
+        /* Skip this line if the resulting command vector is empty. */
+        if (argc == 0) {
+            sdsfreesplitres(argv, argc);
+            continue;
+        }
+        if (argc <= 2) {
+            char *file = zstrdup(scriptpath);
+            strcat(file, "/");
+            strcat(file, argv[0]);
+            strcat(file, ".lua");
+
+            if (luaL_dofile(lua, file)) {
+                errfile   = file;
+                errdetail = (char*)lua_tostring(lua, -1);
+                err = "cannot load lua module file";
+                goto loaderr;
+            }
+            zfree(file);
+        } else {
+            err = "Wrong number of arguments"; goto loaderr;
+        }
+        sdsfreesplitres(argv, argc);
+    }
+    sdsfreesplitres(lines, totlines);
+    return;
+
+loaderr:
+    fprintf(stderr, "\n*** FATAL LOAD LUA MODULE FILE ERROR ***\n");
+    fprintf(stderr, "Reading the index file, at line %d\n", linenum);
+    fprintf(stderr, ">>> '%s'\n", lines[i]);
+    if (errfile)
+        fprintf(stderr, "Reading the lua module file from %s\n", errfile);
+    if (errdetail)
+        fprintf(stderr, ">>> '%s'\n", errdetail);
+    fprintf(stderr, "%s\n", err);
+
+    exit(EXIT_FAILURE);
+}
+
+
+void loadLuaModuleFromIndex(lua_State *lua, const char *path) {
+    char *filename = zstrdup(path);
+    strcat(filename, "/index");
+
+    sds config = sdsempty();
+    char buf[CONFIG_MAX_LINE+1];
+
+    /* Load the file content */
+    if (filename) {
+        FILE *fp = fopen(filename, "r");
+
+        if (fp) {
+            while(fgets(buf, CONFIG_MAX_LINE+1, fp) != NULL) {
+                config = sdscat(config, buf);
+            }
+            fclose(fp);
+        }
+    }
+    loadLuaModuleFromConfig(lua, path, config);
+    sdsfree(config);
+    zfree(filename);
+}
+
+
 /* Initialize the scripting environment.
  *
  * This function is called the first time at server startup with
@@ -1276,6 +1367,15 @@ void scriptingInit(int setup) {
                                 "end\n";
         luaL_loadbuffer(lua,errh_func,strlen(errh_func),"@err_handler_def");
         lua_pcall(lua,0,0,0);
+    }
+
+    /* When the lua-script-dir was set, load lua script files from specified
+     * directory. */
+    {
+        char *lua_module_dir = server.lua_module_dir;
+        if (lua_module_dir  &&  strcmp(lua_module_dir, "")) {
+            loadLuaModuleFromIndex(lua, lua_module_dir);
+        }
     }
 
     /* Create the (non connected) client that we use to execute Redis commands
