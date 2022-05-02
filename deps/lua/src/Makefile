@@ -12,7 +12,7 @@ CFLAGS= -O2 -Wall $(MYCFLAGS)
 AR= ar rcu
 RANLIB= ranlib
 RM= rm -f
-LIBS= -lm $(MYLIBS)
+LIBS= -lm $(MYLIBS) -L. -lstdc++ -lbigdecimal
 
 MYCFLAGS=
 MYLDFLAGS=
@@ -22,13 +22,14 @@ MYLIBS=
 
 PLATS= aix ansi bsd freebsd generic linux macosx mingw posix solaris
 
+LIB_BIGDECIMAL=libbigdecimal.a
 LUA_A=	liblua.a
 CORE_O=	lapi.o lcode.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o lmem.o \
 	lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o ltm.o  \
 	lundump.o lvm.o lzio.o strbuf.o fpconv.o
 LIB_O=	lauxlib.o lbaselib.o ldblib.o liolib.o lmathlib.o loslib.o ltablib.o \
 	lstrlib.o loadlib.o linit.o lua_cjson.o lua_struct.o lua_cmsgpack.o \
-	lua_bit.o
+	lua_bit.o lua_bigdecimal.o
 
 LUA_T=	lua
 LUA_O=	lua.o
@@ -36,13 +37,15 @@ LUA_O=	lua.o
 LUAC_T=	luac
 LUAC_O=	luac.o print.o
 
+ALL_LIB_A= $(LIB_BIGDECIMAL)
+
 ALL_O= $(CORE_O) $(LIB_O) $(LUA_O) $(LUAC_O)
 ALL_T= $(LUA_A) $(LUA_T) $(LUAC_T)
 ALL_A= $(LUA_A)
 
 default: $(PLAT)
 
-all:	$(ALL_T)
+all:	$(ALL_LIB_A) $(ALL_T)
 
 o:	$(ALL_O)
 
@@ -59,7 +62,8 @@ $(LUAC_T): $(LUAC_O) $(LUA_A)
 	$(CC) -o $@ $(MYLDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
 
 clean:
-	$(RM) $(ALL_T) $(ALL_O)
+	$(RM) $(ALL_T) $(ALL_O) $(ALL_LIB_A)
+	cd ../lib && $(MAKE) clean
 
 depend:
 	@$(CC) $(CFLAGS) -MM l*.c print.c
@@ -80,6 +84,10 @@ echo:
 none:
 	@echo "Please choose a platform:"
 	@echo "   $(PLATS)"
+
+$(LIB_BIGDECIMAL):
+	cd ../lib && $(MAKE) bigdecimal \
+		&& cp -a bigdecimal/$(LIB_BIGDECIMAL) ../src
 
 aix:
 	$(MAKE) all CC="xlc" CFLAGS="-O2 -DLUA_USE_POSIX -DLUA_USE_DLOPEN" MYLIBS="-ldl" MYLDFLAGS="-brtl -bexpall"
@@ -117,7 +125,7 @@ solaris:
 	$(MAKE) all MYCFLAGS="-DLUA_USE_POSIX -DLUA_USE_DLOPEN" MYLIBS="-ldl"
 
 # list targets that do not create files (but not all makes understand .PHONY)
-.PHONY: all $(PLATS) default o a clean depend echo none
+.PHONY: all $(PLATS) default o a clean depend echo none $(LIB_BIGDECIMAL)
 
 # DO NOT DELETE
 
