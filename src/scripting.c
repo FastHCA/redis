@@ -1147,6 +1147,8 @@ void loadLuaModuleFromConfig(lua_State *lua, const char *scriptpath, char *confi
             strcat(file, argv[0]);
             strcat(file, ".lua");
 
+            serverLog(LL_WARNING, "Loading Lua module %s", file);
+
             if (luaL_dofile(lua, file)) {
                 errfile   = file;
                 errdetail = (char*)lua_tostring(lua, -1);
