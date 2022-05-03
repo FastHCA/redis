@@ -5,22 +5,23 @@ Redis 6.0 with lua-enhancement
   - support lua module script
   - add lua bigdecimal package
 
-## Build from source
+## Build from Source
 
-  - CentOS
+  - **CentOS**
 
-    install dependencies
+    **install dependencies**
     ```bash
-    $ yum -y install git gcc tcl autoconf gcc-c++ glibc-static centos-release-scl devtoolset-8
+    $ yum -y install git gcc tcl autoconf gcc-c++ glibc-static centos-release-scl
+    $ yum -y install devtoolset-8
     ```
 
-    download redis source
+    **download redis source**
     ```bash
     $ curl -O -sSL https://github.com/FastHCA/redis/archive/refs/tags/6.0.16-lua-enhancement-xxxx.tar.gz
     $ tar zxvf 6.0.16-lua-enhancement-xxxx.tar.gz
     ```
 
-    compile
+    **compile**
     ```bash
     $ scl enable devtoolset-8 bash
     $ cd redis-6.0.16-lua-enhancement-xxxx
