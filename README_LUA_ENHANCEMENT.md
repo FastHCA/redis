@@ -29,3 +29,8 @@ Redis 6.0 with lua-enhancement
     $ make install
     ```
 
+## Run Server
+
+  ```bash
+  $ redis-server --port 6379 --lua-module-dir "<your_lua_module>" --protected-mode no --bind 0.0.0.0
+  ```
