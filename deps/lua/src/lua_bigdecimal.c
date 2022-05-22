@@ -39,10 +39,10 @@ static BigDecimal *
 luaEX_newBigDecimal(lua_State *L, VP_HANDLE v)
 {
     size_t nbytes = sizeof(BigDecimal);
-    BigDecimal *d = (BigDecimal*)lua_newuserdata(L, nbytes);
+    BigDecimal *d = (BigDecimal*)lua_newuserdata(L, nbytes);    // [ud]
     {
-        luaL_getmetatable(L, BIGDECIMAL_NAME);
-        lua_setmetatable(L, -2);
+        luaL_getmetatable(L, BIGDECIMAL_NAME);                  // [ud  M]
+        lua_setmetatable(L, -2);                                // [ud]
     }
     *d = v;
 
@@ -53,23 +53,22 @@ luaEX_newBigDecimal(lua_State *L, VP_HANDLE v)
 static int
 lua_bigdecimal_new(lua_State *L)
 {
-    VP_HANDLE v = NULL;
+    VP_HANDLE v;
 
     int argc = lua_gettop(L);    /* number of arguments */
     if (argc > 0) {
-        const char* input     = luaL_checkstring(L, 1);
+        const char* input     = lua_tostring(L, 1);
         int         precision = luaL_optinteger (L, 2, DEF_SIZE);
 
         v = VpAlloc(input, precision);
-        if (VpIsInvalid(v)) {
-            VpFree(&v);
-            lua_pushnil(L);
-            return 1;
-        }
     } else {
         v = VpMemAlloc(DEF_SIZE);
     }
 
+    if (VpIsInvalid(v)) {
+        VpFree(&v);
+        return 0;
+    }
     luaEX_newBigDecimal(L, v);
 
     return 1;
@@ -82,7 +81,7 @@ lua_bigdecimal_add(lua_State *L)
     BigDecimal *d = luaEX_checkBigDecimal(L, 1);
     VP_HANDLE augend = *d;
 
-    VP_HANDLE operand = NULL;
+    VP_HANDLE operand;
     int free_operand = 0;
 
     int type = lua_type(L, 2);
@@ -100,7 +99,6 @@ lua_bigdecimal_add(lua_State *L)
     case LUA_TSTRING:
         {
             const char* input = lua_tostring(L, 2);
-            lua_pop(L, 2);
             operand = VpAlloc(input, DEF_SIZE);
 
             if (VpIsInvalid(operand)) {
@@ -135,7 +133,7 @@ lua_bigdecimal_sub(lua_State *L)
     BigDecimal *d = luaEX_checkBigDecimal(L, 1);
     VP_HANDLE minuend = *d;
 
-    VP_HANDLE operand = NULL;
+    VP_HANDLE operand;
     int free_operand = 0;
 
     int type = lua_type(L, 2);
@@ -153,7 +151,6 @@ lua_bigdecimal_sub(lua_State *L)
     case LUA_TSTRING:
         {
             const char* input = lua_tostring(L, 2);
-            lua_pop(L, 2);
             operand = VpAlloc(input, DEF_SIZE);
 
             if (VpIsInvalid(operand)) {
@@ -170,15 +167,18 @@ lua_bigdecimal_sub(lua_State *L)
         return 0;
     }
 
-    VP_HANDLE v = VpMemAlloc(VpMaxLength(minuend));
-    v = VpSub(v, minuend, operand);
-    luaEX_newBigDecimal(L, v);
+    if (operand) {
+        VP_HANDLE v = VpMemAlloc(VpMaxLength(minuend));
+        v = VpSub(v, minuend, operand);
+        luaEX_newBigDecimal(L, v);
 
-    if (free_operand == 1) {
-        VpFree(&operand);
+        if (free_operand == 1) {
+            VpFree(&operand);
+        }
+
+        return 1;
     }
 
-    return 1;
 }
 
 
@@ -188,7 +188,7 @@ lua_bigdecimal_mul(lua_State *L)
     BigDecimal *d = luaEX_checkBigDecimal(L, 1);
     VP_HANDLE multiplier = *d;
 
-    VP_HANDLE operand = NULL;
+    VP_HANDLE operand;
     int free_operand = 0;
 
     int type = lua_type(L, 2);
@@ -206,7 +206,6 @@ lua_bigdecimal_mul(lua_State *L)
     case LUA_TSTRING:
         {
             const char* input = lua_tostring(L, 2);
-            lua_pop(L, 2);
             operand = VpAlloc(input, DEF_SIZE);
 
             if (VpIsInvalid(operand)) {
@@ -249,7 +248,7 @@ lua_bigdecimal_div_internal(lua_State *L, BigDecimalDivProcessProc process)
     BigDecimal *d = luaEX_checkBigDecimal(L, 1);
     VP_HANDLE dividend = *d;
 
-    VP_HANDLE operand = NULL;
+    VP_HANDLE operand;
     int free_operand = 0;
 
     int type = lua_type(L, 2);
@@ -267,7 +266,6 @@ lua_bigdecimal_div_internal(lua_State *L, BigDecimalDivProcessProc process)
     case LUA_TSTRING:
         {
             const char* input = lua_tostring(L, 2);
-            lua_pop(L, 2);
             operand = VpAlloc(input, DEF_SIZE);
 
             if (VpIsInvalid(operand)) {
@@ -356,7 +354,7 @@ lua_bigdecimal_cmp(lua_State *L)
     BigDecimal *d = luaEX_checkBigDecimal(L, 1);
     VP_HANDLE v = *d;
 
-    VP_HANDLE comparand = NULL;
+    VP_HANDLE comparand;
     int free_comparand = 0;
 
     int type = lua_type(L, 2);
@@ -374,7 +372,6 @@ lua_bigdecimal_cmp(lua_State *L)
     case LUA_TSTRING:
         {
             const char* input = lua_tostring(L, 2);
-            lua_pop(L, 2);
             comparand = VpAlloc(input, DEF_SIZE);
 
             if (VpIsInvalid(comparand)) {
@@ -452,7 +449,7 @@ lua_bigdecimal_int(lua_State *L)
 static int
 lua_bigdecimal_abs(lua_State *L)
 {
-    VP_HANDLE operand = NULL;
+    VP_HANDLE operand;
 
     int type = lua_type(L, 1);
     switch (type)
@@ -469,7 +466,6 @@ lua_bigdecimal_abs(lua_State *L)
     case LUA_TSTRING:
         {
             const char* input = lua_tostring(L, 1);
-            lua_pop(L, 1);
             operand = VpAlloc(input, DEF_SIZE);
 
             if (VpIsInvalid(operand)) {
@@ -521,7 +517,7 @@ lua_bigdecimal_effective_digits(lua_State *L)
 static int
 lua_bigdecimal_negate(lua_State *L)
 {
-    VP_HANDLE operand = NULL;
+    VP_HANDLE operand;
 
     int type = lua_type(L, 1);
     switch (type)
@@ -538,7 +534,6 @@ lua_bigdecimal_negate(lua_State *L)
     case LUA_TSTRING:
         {
             const char* input = lua_tostring(L, 1);
-            lua_pop(L, 1);
             operand = VpAlloc(input, DEF_SIZE);
 
             if (VpIsInvalid(operand)) {
@@ -569,7 +564,7 @@ lua_bigdecimal_sign(lua_State *L)
 
     int argc = lua_gettop(L);    // number of arguments
     if (argc > 1) {
-        int sign = luaL_checkinteger(L, 2);
+        int sign = lua_tointeger(L, 2);
         v = VpSetSign(v, sign);
         luaEX_newBigDecimal(L, v);
 
@@ -586,8 +581,37 @@ lua_bigdecimal_sign(lua_State *L)
 static int
 lua_bigdecimal_sqrt(lua_State *L)
 {
-    BigDecimal *d = luaEX_checkBigDecimal(L, 1);
-    VP_HANDLE base = *d;
+    VP_HANDLE base;
+
+    int type = lua_type(L, 1);
+    switch (type)
+    {
+    case LUA_TUSERDATA:
+        {
+            BigDecimal *pd = (BigDecimal*)lua_touserdata(L, 1);
+            luaL_argcheck(L, pd != NULL, 1, "specified operand must be string, number, or 'bigdecimal' expected");
+            base = *pd;
+        }
+        break;
+
+    case LUA_TNUMBER:
+    case LUA_TSTRING:
+        {
+            const char* input = lua_tostring(L, 1);
+            base = VpAlloc(input, DEF_SIZE);
+
+            if (VpIsInvalid(base)) {
+                VpFree(&base);
+                luaL_argerror(L, 1, "specified operand is invalid");
+                return 0;
+            }
+        }
+        break;
+
+    default:
+        luaL_argerror(L, 1, "specified operand must be string, number, or 'bigdecimal' expected");
+        return 0;
+    }
 
     VP_HANDLE v = VpMemAlloc(VpMaxLength(base));
     v = VpSqrt(v, base);
@@ -600,10 +624,39 @@ lua_bigdecimal_sqrt(lua_State *L)
 static int
 lua_bigdecimal_power(lua_State *L)
 {
-    BigDecimal *d = luaEX_checkBigDecimal(L, 1);
-    VP_HANDLE base = *d;
+    VP_HANDLE base;
 
-    int exponent = luaL_checkinteger(L, 2);
+    int type = lua_type(L, 1);
+    switch (type)
+    {
+    case LUA_TUSERDATA:
+        {
+            BigDecimal *pd = (BigDecimal*)lua_touserdata(L, 1);
+            luaL_argcheck(L, pd != NULL, 1, "specified operand must be string, number, or 'bigdecimal' expected");
+            base = *pd;
+        }
+        break;
+
+    case LUA_TNUMBER:
+    case LUA_TSTRING:
+        {
+            const char* input = lua_tostring(L, 1);
+            base = VpAlloc(input, DEF_SIZE);
+
+            if (VpIsInvalid(base)) {
+                VpFree(&base);
+                luaL_argerror(L, 1, "specified operand is invalid");
+                return 0;
+            }
+        }
+        break;
+
+    default:
+        luaL_argerror(L, 1, "specified operand must be string, number, or 'bigdecimal' expected");
+        return 0;
+    }
+
+    int exponent = lua_tointeger(L, 2);
 
     VP_HANDLE v = VpMemAlloc(VpMaxLength(base));
     v = VpPower(v, base, exponent);
@@ -726,11 +779,39 @@ lua_bigdecimal_isinf(lua_State *L)
 static int
 lua_bigdecimal_scaleround(lua_State *L)
 {
-    BigDecimal *d = luaEX_checkBigDecimal(L, 1);
-    VP_HANDLE v = *d;
+    VP_HANDLE v;
 
-    int scale = luaL_checkinteger(L, 2);
-    lua_pop(L, 2);
+    int type = lua_type(L, 1);
+    switch (type)
+    {
+    case LUA_TUSERDATA:
+        {
+            BigDecimal *pd = (BigDecimal*)lua_touserdata(L, 1);
+            luaL_argcheck(L, pd != NULL, 1, "specified operand must be string, number, or 'bigdecimal' expected");
+            v = *pd;
+        }
+        break;
+
+    case LUA_TNUMBER:
+    case LUA_TSTRING:
+        {
+            const char* input = lua_tostring(L, 1);
+            v = VpAlloc(input, DEF_SIZE);
+
+            if (VpIsInvalid(v)) {
+                VpFree(&v);
+                luaL_argerror(L, 1, "specified operand is invalid");
+                return 0;
+            }
+        }
+        break;
+
+    default:
+        luaL_argerror(L, 1, "specified operand must be string, number, or 'bigdecimal' expected");
+        return 0;
+    }
+
+    int scale = lua_tointeger(L, 2);
 
     int mode = VpGetRoundMode();
     mode = luaL_optinteger(L, 3, mode);
@@ -748,11 +829,39 @@ lua_bigdecimal_scaleround(lua_State *L)
 static int
 lua_bigdecimal_lengthround(lua_State *L)
 {
-    BigDecimal *d = luaEX_checkBigDecimal(L, 1);
-    VP_HANDLE v = *d;
+    VP_HANDLE v;
 
-    int scale = luaL_checkinteger(L, 2);
-    lua_pop(L, 2);
+    int type = lua_type(L, 1);
+    switch (type)
+    {
+    case LUA_TUSERDATA:
+        {
+            BigDecimal *pd = (BigDecimal*)lua_touserdata(L, 1);
+            luaL_argcheck(L, pd != NULL, 1, "specified operand must be string, number, or 'bigdecimal' expected");
+            v = *pd;
+        }
+        break;
+
+    case LUA_TNUMBER:
+    case LUA_TSTRING:
+        {
+            const char* input = lua_tostring(L, 1);
+            v = VpAlloc(input, DEF_SIZE);
+
+            if (VpIsInvalid(v)) {
+                VpFree(&v);
+                luaL_argerror(L, 1, "specified operand is invalid");
+                return 0;
+            }
+        }
+        break;
+
+    default:
+        luaL_argerror(L, 1, "specified operand must be string, number, or 'bigdecimal' expected");
+        return 0;
+    }
+
+    int scale = lua_tointeger(L, 2);
 
     int mode = VpGetRoundMode();
     mode = luaL_optinteger(L, 3, mode);
@@ -773,7 +882,6 @@ lua_bigdecimal_digit_separation_count(lua_State *L)
     int argc = lua_gettop(L);    /* number of arguments */
     if (argc > 0) {
         int m = luaL_checkinteger(L, 1);
-        lua_pop(L, 1);
         lua_pushboolean(L, VpSetDigitSeparationCount(m) == m);
         return 1;
     }
@@ -790,7 +898,6 @@ lua_bigdecimal_digit_separator(lua_State *L)
     if (argc > 0) {
         size_t l;
         const char *sp = luaL_checklstring(L, 1, &l);
-        lua_pop(L, 1);
         char c = (char)(sp[0]);
         lua_pushboolean(L, VpSetDigitSeparator(c) == c);
         return 1;
@@ -808,7 +915,6 @@ lua_bigdecimal_digit_leader(lua_State *L)
     if (argc > 0) {
         size_t l;
         const char *sp = luaL_checklstring(L, 1, &l);
-        lua_pop(L, 1);
         char c = (char)(sp[0]);
         lua_pushboolean(L, VpSetDigitLeader(c) == c);
         return 1;
@@ -889,10 +995,7 @@ lua_bigdecimal_cur_length(lua_State *L)
 static int
 lua_bigdecimal_destroy(lua_State *L)
 {
-    // BigDecimal *d = luaEX_checkBigDecimal(L, 1);
-    // VP_HANDLE v = *d;
-
-    // VpFree(&v);
+    lua_pop(L, 1);
 
     return 0;
 }
