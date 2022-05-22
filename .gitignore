@@ -24,9 +24,11 @@ src/configs
 redis.ds
 src/redis.conf
 src/nodes.conf
+deps/lua/lib/bigdecimal/libbigdecimal.a
 deps/lua/src/lua
 deps/lua/src/luac
 deps/lua/src/liblua.a
+deps/lua/src/libbigdecimal.a
 tests/tls/*
 .make-*
 .prerequisites
