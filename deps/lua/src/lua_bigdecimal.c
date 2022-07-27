@@ -167,18 +167,15 @@ lua_bigdecimal_sub(lua_State *L)
         return 0;
     }
 
-    if (operand) {
-        VP_HANDLE v = VpMemAlloc(VpMaxLength(minuend));
-        v = VpSub(v, minuend, operand);
-        luaEX_newBigDecimal(L, v);
+    VP_HANDLE v = VpMemAlloc(VpMaxLength(minuend));
+    v = VpSub(v, minuend, operand);
+    luaEX_newBigDecimal(L, v);
 
-        if (free_operand == 1) {
-            VpFree(&operand);
-        }
-
-        return 1;
+    if (free_operand == 1) {
+        VpFree(&operand);
     }
 
+    return 1;
 }
 
 
